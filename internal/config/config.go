@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -16,7 +15,7 @@ type Config struct {
 }
 
 func initConfig() *Config {
-	fmt.Println("Loading envs...")
+	log.Println("Loading envs...")
 
 	if err := godotenv.Load(); err != nil {
 		log.Fatalln("Error loading .env file: ", err)

@@ -3,7 +3,10 @@ package api
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+
+	"github.com/dev-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
 	"github.com/go-chi/chi"
 )
 
@@ -37,7 +40,7 @@ func (s *Server) Start() error {
 		Handler: router,
 	}
 
-	fmt.Printf("Server started at %s\n", s.addr)
+	log.Printf("Server started at %s\n", s.addr)
 
 	return srv.ListenAndServe()
 }

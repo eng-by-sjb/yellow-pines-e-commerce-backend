@@ -26,3 +26,6 @@ go.work.sum
 
 # air 
 .air.toml
+
+bin
+yellow-pines-e-commerce-backend

@@ -1,4 +1,4 @@
-module github.com/dev-by-sjb/e-commerce-vsa
+module github.com/dev-by-sjb/yellow-pines-e-commerce-backend
 
 go 1.22.3
 
