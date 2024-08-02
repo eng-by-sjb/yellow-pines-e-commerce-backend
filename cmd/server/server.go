@@ -33,6 +33,13 @@ func (s *Server) Start() error {
 	})
 
 	// user feature
+	userStore := user.NewStore(s.db)
+	userService := user.NewService(userStore)
+	userHandler := user.NewHandler(userService)
+	userHandler.RegisterRoutes(v1Router)
+
+	// products feature
+
 	router.Mount("/api/v1", v1Router)
 
 	srv := http.Server{
@@ -40,7 +47,7 @@ func (s *Server) Start() error {
 		Handler: router,
 	}
 
-	log.Printf("Server started at %s\n", s.addr)
+	log.Printf("Server started at port %s\n", s.addr)
 
 	return srv.ListenAndServe()
 }

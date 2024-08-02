@@ -20,5 +20,8 @@ run: build
 test:
 	$(GO_TEST) -v $(TEST_DIR)
 
+clean_cached:
+	$(GO) clean -testcache
+
 tidy:
 	$(GO_TIDY)
