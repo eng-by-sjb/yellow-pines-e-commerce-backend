@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/dev-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
 	"github.com/go-chi/chi"
 )
 

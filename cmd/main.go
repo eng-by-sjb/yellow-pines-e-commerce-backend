@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/dev-by-sjb/yellow-pines-e-commerce-backend/cmd/server"
-	"github.com/dev-by-sjb/yellow-pines-e-commerce-backend/internal/config"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/cmd/server"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/config"
 )
 
 var (
