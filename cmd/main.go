@@ -6,16 +6,23 @@ import (
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/cmd/server"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/config"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/storage"
 )
 
 var (
-	srvAddr = config.Env.ServerAddr
+	srvAddr         = config.Env.ServerAddr
+	PostgresConnStr = config.Env.PostgresConnStr
 )
 
 func main() {
 	log.SetFlags(log.Ldate | log.Lshortfile)
-	srv := server.NewServer(srvAddr, nil)
 
+	db, err := storage.NewPostgresDB(PostgresConnStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	srv := server.NewServer(srvAddr, db)
 	if err := srv.Start(); err != nil {
 		log.Fatal(fmt.Errorf("failed to start server: %w", err))
 	}

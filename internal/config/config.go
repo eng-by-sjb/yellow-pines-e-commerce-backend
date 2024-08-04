@@ -10,8 +10,8 @@ import (
 var Env = initConfig()
 
 type Config struct {
-	DBConnStr  string
-	ServerAddr string
+	PostgresConnStr string
+	ServerAddr      string
 }
 
 func initConfig() *Config {
@@ -22,8 +22,8 @@ func initConfig() *Config {
 	}
 
 	return &Config{
-		DBConnStr:  getEnv("DB_CONN_STR", "user=postgres password=secret host=localhost port=5432 dbname=postgres sslmode=disable"),
-		ServerAddr: getEnv("SERVER_ADDR", "localhost:8080"),
+		PostgresConnStr: getEnv("POSTGRES_CONN_STR", "user=postgres password=secret host=localhost port=5432 dbname=postgres sslmode=disable"),
+		ServerAddr:      getEnv("SERVER_ADDR", "localhost:8080"),
 	}
 }
 

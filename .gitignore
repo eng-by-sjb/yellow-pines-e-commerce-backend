@@ -28,4 +28,7 @@ go.work.sum
 .air.toml
 
 bin
-yellow-pines-e-commerce-backend
+yellow-pines-e-commerce-backend/
+tmp/
+x-files.txt
+Dockerfile
