@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/google/uuid"
 )
 
 type testCase struct {
@@ -144,6 +145,6 @@ func (m *mockUserStore) findByEmail(ctx context.Context, email string) (*User, e
 	return user, nil
 }
 
-func (m *mockUserStore) findByID(ctx context.Context, id int) (*User, error) {
+func (m *mockUserStore) findByID(ctx context.Context, userID uuid.UUID) (*User, error) {
 	return nil, nil
 }
