@@ -30,5 +30,9 @@ go.work.sum
 bin
 yellow-pines-e-commerce-backend/
 tmp/
-x-files.txt
+.vscode
+x-*
 Dockerfile
+migrate
+admin
+product

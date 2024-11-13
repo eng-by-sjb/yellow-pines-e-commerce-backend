@@ -2,15 +2,19 @@ package user
 
 import (
 	"context"
-	"fmt"
+	"log"
+	"strings"
 
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/auth"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/dto"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
+	"github.com/google/uuid"
 )
 
 type Servicer interface {
-	createUser(ctx context.Context, newUser *RegisterUserRequestDTO) (bool, error)
-	getUserByEmail(ctx context.Context, email *string) (*User, error)
-	getUserByID(ctx context.Context, id *int) (*User, error)
+	registerUser(ctx context.Context, newUser *dto.RegisterUserRequest) error
+	loginUser(ctx context.Context, payload *dto.LoginUserRequest) error
+	getUserByID(ctx context.Context, userID *uuid.UUID) (*User, error)
 }
 
 type Service struct {
@@ -23,44 +27,41 @@ func NewService(store Storer) *Service {
 	}
 }
 
-func (s *Service) createUser(ctx context.Context, newUser *RegisterUserRequestDTO) (bool, error) {
-	if err := ctx.Err(); err != nil {
-		return false, err
-	}
+func (s *Service) registerUser(ctx context.Context, newUser *dto.RegisterUserRequest) error {
+	newUser.FirstName = strings.TrimSpace(newUser.FirstName)
+	newUser.LastName = strings.TrimSpace(newUser.LastName)
+	newUser.Email = strings.TrimSpace(newUser.Email)
 
 	user, err := s.store.findByEmail(ctx, newUser.Email)
-
 	if err != nil {
-		fmt.Print((*newUser).Email)
-		return false, err
+		return err
 	}
 
-	if user != nil {
-		return true, nil
+	//todo: to Decouple service from external depends. put uuid.Nil in a
+	// todo: --- variable somewhere and import it here
+	if user.UserID != uuid.Nil {
+		return severerrors.ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := auth.HashPassword(
 		newUser.Password,
 	)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	if err := ctx.Err(); err != nil {
-		return false, err
-	}
 	err = s.store.create(ctx, &User{
-		FirstName: newUser.FirstName,
-		LastName:  newUser.LastName,
-		Email:     newUser.Email,
-		Password:  hashedPassword,
+		FirstName:      newUser.FirstName,
+		LastName:       newUser.LastName,
+		Email:          newUser.Email,
+		HashedPassword: hashedPassword,
 	})
 
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return false, nil
+	return nil
 }
 
 func (s *Service) getUserByEmail(ctx context.Context, email *string) (*User, error) {

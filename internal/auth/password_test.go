@@ -26,18 +26,19 @@ func TestHashPassword(t *testing.T) {
 
 func TestComparePassword(t *testing.T) {
 	hashed, err := HashPassword(correctPassword)
-
 	if err != nil {
 		t.Fatalf("Error hashing password: %v", err)
 	}
 
-	err = ComparePassword(hashed, correctPassword)
-	if err != nil {
-		t.Fatalf("Error comparing password: %v", err)
+	var isValid bool
+
+	isValid = ComparePassword(hashed, correctPassword)
+	if !isValid {
+		t.Fatalf("Expected password to match: %v", err)
 	}
 
-	err = ComparePassword(hashed, incorrectPassword)
-	if err == nil {
-		t.Fatalf("Expected password to not match password: %v", err)
+	isValid = ComparePassword(hashed, incorrectPassword)
+	if isValid {
+		t.Fatalf("Expected hashedPassword to not match password: %v", err)
 	}
 }

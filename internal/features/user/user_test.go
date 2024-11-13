@@ -8,6 +8,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/dto"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/handlerutils"
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
 )
@@ -16,7 +18,7 @@ type testCase struct {
 	name     string
 	path     string
 	method   string
-	payload  RegisterUserRequestDTO
+	payload  dto.RegisterUserRequest
 	expected int
 }
 
@@ -26,17 +28,23 @@ const (
 )
 
 var (
-	validPayload = RegisterUserRequestDTO{
+	validPayload = dto.RegisterUserRequest{
 		FirstName: "Lime",
 		LastName:  "Peters",
-		Email:     "lime@gmail.com",
+		Email:     "limepeter@gmail.com",
 		Password:  "12345",
 	}
-	invalidPayload = RegisterUserRequestDTO{
+	invalidPayloadOne = dto.RegisterUserRequest{
 		FirstName: "Lime",
 		LastName:  "Peters",
 		Email:     "line.com",
 		Password:  "12",
+	}
+	invalidPayloadTwo = dto.RegisterUserRequest{
+		FirstName: "",
+		LastName:  "Peters",
+		Email:     "poster.com",
+		Password:  "12345",
 	}
 )
 
@@ -45,8 +53,15 @@ var testCases = []testCase{
 		name:     "should fail to register a new user if payload is invalid",
 		path:     registerPath,
 		method:   http.MethodPost,
-		payload:  invalidPayload,
-		expected: http.StatusBadRequest,
+		payload:  invalidPayloadOne,
+		expected: http.StatusUnprocessableEntity,
+	},
+	{
+		name:     "should fail to register user cause because firstName is all repeating characters",
+		path:     registerPath,
+		method:   http.MethodPost,
+		payload:  invalidPayloadTwo,
+		expected: http.StatusUnprocessableEntity,
 	},
 	{
 		name:     "should successfully register a new user",
@@ -75,12 +90,12 @@ func TestUserRoutes(t *testing.T) {
 	router.MethodFunc(
 		http.MethodPost,
 		registerPath,
-		userHandler.registerUserHandler,
+		handlerutils.MakeHandler(userHandler.registerUserHandler),
 	)
 	router.MethodFunc(
 		http.MethodPost,
 		loginPath,
-		userHandler.loginUserHandler,
+		handlerutils.MakeHandler(userHandler.loginUserHandler),
 	)
 
 	for _, tc := range testCases {
@@ -117,29 +132,27 @@ func TestUserRoutes(t *testing.T) {
 }
 
 type mockUserStore struct {
-	User map[string]*User
+	Users map[string]*User
 }
 
 func newMockUserStore() *mockUserStore {
 	return &mockUserStore{
-		User: make(map[string]*User),
+		Users: make(map[string]*User),
 	}
 }
 
 func (m *mockUserStore) create(ctx context.Context, user *User) error {
-	m.User = make(map[string]*User)
-	m.User[user.Email] = user
+	user.UserID = uuid.New()
+	m.Users[user.Email] = user
 	return nil
 }
 
 func (m *mockUserStore) findByEmail(ctx context.Context, email string) (*User, error) {
-	user, exists := m.User[email]
+	user, exists := m.Users[email]
 
-	// since no user was found and it is not an error from the database
-	// we can return nil and nil
-	//but if an actual error occurs when accessing the database we can return an error
 	if !exists {
-		return nil, nil
+		user = new(User) // initialize to zero values
+		return user, nil
 	}
 
 	return user, nil

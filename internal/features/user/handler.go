@@ -2,14 +2,15 @@ package user
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"net/http"
-	"strings"
 	"time"
 
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/helpers"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/dto"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/handlerutils"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/validate"
 	"github.com/go-chi/chi"
-	"github.com/go-playground/validator/v10"
 )
 
 type Handler struct {
@@ -23,128 +24,63 @@ func NewHandler(service Servicer) *Handler {
 }
 
 func (h *Handler) RegisterRoutes(router *chi.Mux) {
-	router.Post("/register", h.registerUserHandler)
-	router.Post("/login", h.loginUserHandler)
+	router.Post(
+		"/register",
+		handlerutils.MakeHandler(h.registerUserHandler),
+	)
+	router.Post(
+		"/login",
+		handlerutils.MakeHandler(h.loginUserHandler),
+	)
 }
 
-func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(
 		r.Context(),
 		(30 * time.Second),
 	)
 	defer cancel()
 
-	var payload RegisterUserRequestDTO
+	var payload *dto.RegisterUserRequest
 	var err error
 	defer r.Body.Close()
 
-	err = helpers.ParseJSON(r, &payload)
-	if err != nil {
-		helpers.WriteError(
-			w,
+	if err = handlerutils.ParseJSON(r, &payload); err != nil {
+		return severerrors.New(
 			http.StatusBadRequest,
-			err.Error(),
+			severerrors.ErrInvalidRequestPayload.Error(),
+			nil,
 		)
-		return
 	}
 
-	if err := helpers.Validator.Struct(payload); err != nil {
-		validationErrors := make([]helpers.ValidationError, 0, 10)
-
-		var message string
-		var field string
-		var code string
-
-		for _, err := range err.(validator.ValidationErrors) {
-			field = fmt.Sprint(
-				strings.ToLower(err.Field()[:1]),
-				err.Field()[1:],
+	if err = validate.StructFields(payload); err != nil {
+		return severerrors.New(
+			http.StatusUnprocessableEntity,
+			severerrors.ErrValidationFailed.Error(),
+			err,
 			)
-			code = fmt.Sprintf(
-				"%s_%s",
-				strings.ToUpper(err.Field()),
-				strings.ToUpper(err.Tag()),
+	}
+
+	if err = h.service.registerUser(ctx, payload); err != nil {
+		switch {
+		case errors.Is(err, severerrors.ErrUserAlreadyExists):
+			return severerrors.New(
+				http.StatusConflict,
+				severerrors.ErrUserAlreadyExists.Error(),
+				nil,
 			)
-
-			switch err.Tag() {
-			case "required":
-				message = fmt.Sprintf(
-					"%s is required",
-					field,
-				)
-
-			case "email":
-				message = fmt.Sprintf(
-					"%s is not a valid email",
-					field,
-				)
-
-			case "min":
-				message = fmt.Sprintf(
-					"%s must be at least %s characters long",
-					field,
-					err.Param(),
-				)
-
-			case "max":
-				message = fmt.Sprintf(
-					"%s must be at most %s characters long",
-					field,
-					err.Param(),
-				)
-
-			default:
-				message = fmt.Sprintf(
-					"%s is not valid",
-					field,
-				)
-			}
-
-			validationErrors = append(validationErrors, helpers.ValidationError{
-				Field:   field,
-				Message: message,
-				Code:    code,
-			})
+		default:
+			return err
 		}
+	}
 
-		helpers.WriteError(
+	return handlerutils.WriteSuccessJSON(
 			w,
-			http.StatusBadRequest,
-			"validation failed for one or more fields",
-			validationErrors,
+		http.StatusCreated,
+		"user created",
+		nil,
 		)
-		return
-	}
-
-	newUser := &RegisterUserRequestDTO{
-		FirstName: strings.TrimSpace(payload.FirstName),
-		LastName:  strings.TrimSpace(payload.LastName),
-		Email:     strings.TrimSpace(payload.Email),
-		Password:  payload.Password,
-	}
-
-	exists, err := h.service.createUser(ctx, newUser)
-
-	select {
-	case <-ctx.Done():
-		if ctx.Err() == context.DeadlineExceeded {
-			helpers.WriteError(
-				w,
-				http.StatusBadGateway,
-				"request timed out",
-			)
-			return
-		}
-
-		helpers.WriteError(
-			w,
-			http.StatusRequestTimeout,
-			"request cancelled",
-		)
-
-	default:
-	}
-
+}
 	if err != nil {
 		helpers.WriteError(
 			w,
