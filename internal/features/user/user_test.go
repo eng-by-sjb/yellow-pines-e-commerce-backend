@@ -8,7 +8,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/dto"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/handlerutils"
 	"github.com/go-chi/chi"
 	"github.com/google/uuid"
@@ -18,7 +17,7 @@ type testCase struct {
 	name     string
 	path     string
 	method   string
-	payload  dto.RegisterUserRequest
+	payload  RegisterUserRequest
 	expected int
 }
 
@@ -28,19 +27,19 @@ const (
 )
 
 var (
-	validPayload = dto.RegisterUserRequest{
+	validPayload = RegisterUserRequest{
 		FirstName: "Lime",
 		LastName:  "Peters",
 		Email:     "limepeter@gmail.com",
 		Password:  "12345",
 	}
-	invalidPayloadOne = dto.RegisterUserRequest{
+	invalidPayloadOne = RegisterUserRequest{
 		FirstName: "Lime",
 		LastName:  "Peters",
 		Email:     "line.com",
 		Password:  "12",
 	}
-	invalidPayloadTwo = dto.RegisterUserRequest{
+	invalidPayloadTwo = RegisterUserRequest{
 		FirstName: "",
 		LastName:  "Peters",
 		Email:     "poster.com",
@@ -81,7 +80,7 @@ var testCases = []testCase{
 
 func TestUserRoutes(t *testing.T) {
 	userStore := newMockUserStore()
-	userService := NewService(userStore)
+	userService := NewService(userStore, nil) // todo: no token service
 	userHandler := NewHandler(userService)
 
 	// create router
@@ -131,23 +130,23 @@ func TestUserRoutes(t *testing.T) {
 
 }
 
-type mockUserStore struct {
+type mockStore struct {
 	Users map[string]*User
 }
 
-func newMockUserStore() *mockUserStore {
-	return &mockUserStore{
+func newMockUserStore() *mockStore {
+	return &mockStore{
 		Users: make(map[string]*User),
 	}
 }
 
-func (m *mockUserStore) create(ctx context.Context, user *User) error {
+func (m *mockStore) create(ctx context.Context, user *User) error {
 	user.UserID = uuid.New()
 	m.Users[user.Email] = user
 	return nil
 }
 
-func (m *mockUserStore) findByEmail(ctx context.Context, email string) (*User, error) {
+func (m *mockStore) findByEmail(ctx context.Context, email string) (*User, error) {
 	user, exists := m.Users[email]
 
 	if !exists {
@@ -158,6 +157,18 @@ func (m *mockUserStore) findByEmail(ctx context.Context, email string) (*User, e
 	return user, nil
 }
 
-func (m *mockUserStore) findByID(ctx context.Context, userID uuid.UUID) (*User, error) {
+func (m *mockStore) findByID(ctx context.Context, userID uuid.UUID) (*User, error) {
 	return nil, nil
+}
+
+func (m *mockStore) createSession(ctx context.Context, session *Session) error {
+	return nil
+}
+
+func (m *mockStore) findSessionByUserIDAndUserAgent(ctx context.Context, userID uuid.UUID, UserAgent string) (*Session, error) {
+	return nil, nil
+}
+
+func (m *mockStore) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error {
+	return nil
 }

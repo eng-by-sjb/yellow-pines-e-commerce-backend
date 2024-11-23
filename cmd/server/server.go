@@ -6,20 +6,23 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
 )
 
 type Server struct {
-	addr string
-	db   *sql.DB
+	addr         string
+	db           *sql.DB
+	tokenManager *auth.TokenManager
 }
 
-func NewServer(addr string, db *sql.DB) *Server {
+func NewServer(addr string, db *sql.DB, tokenManager *auth.TokenManager) *Server {
 	return &Server{
-		addr: addr,
-		db:   db,
+		addr:         addr,
+		db:           db,
+		tokenManager: tokenManager,
 	}
 }
 
@@ -41,7 +44,7 @@ func (s *Server) Start() error {
 
 	// user feature
 	userStore := user.NewStore(s.db)
-	userService := user.NewService(userStore)
+	userService := user.NewService(userStore, s.tokenManager)
 	userHandler := user.NewHandler(userService)
 	userHandler.RegisterRoutes(v1Router)
 
@@ -58,3 +61,12 @@ func (s *Server) Start() error {
 
 	return srv.ListenAndServe()
 }
+
+// func (s *Server) userFeature(router *chi.Mux)  {
+// 	// user feature
+// 	userStore := user.NewStore(s.db)
+// 	tokenMaker := auth.NewTokenMaker()
+// 	userService := user.NewService(userStore, tokenMaker)
+// 	userHandler := user.NewHandler(userService)
+// 	userHandler.RegisterRoutes(router)
+// }

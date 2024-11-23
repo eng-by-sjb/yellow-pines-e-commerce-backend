@@ -2,32 +2,33 @@ package user
 
 import (
 	"context"
-	"log"
 	"strings"
+	"time"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/dto"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
 	"github.com/google/uuid"
 )
 
 type Servicer interface {
-	registerUser(ctx context.Context, newUser *dto.RegisterUserRequest) error
-	loginUser(ctx context.Context, payload *dto.LoginUserRequest) error
-	getUserByID(ctx context.Context, userID *uuid.UUID) (*User, error)
+	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
+	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
+	logoutUser(ctx context.Context, userID *uuid.UUID) (*User, error)
 }
 
 type Service struct {
-	store Storer
+	store      Storer
+	tokenMaker auth.TokenMaker
 }
 
-func NewService(store Storer) *Service {
+func NewService(store Storer, tokenMaker auth.TokenMaker) *Service {
 	return &Service{
-		store: store,
+		store:      store,
+		tokenMaker: tokenMaker,
 	}
 }
 
-func (s *Service) registerUser(ctx context.Context, newUser *dto.RegisterUserRequest) error {
+func (s *Service) registerUser(ctx context.Context, newUser *RegisterUserRequest) error {
 	newUser.FirstName = strings.TrimSpace(newUser.FirstName)
 	newUser.LastName = strings.TrimSpace(newUser.LastName)
 	newUser.Email = strings.TrimSpace(newUser.Email)
@@ -64,10 +65,79 @@ func (s *Service) registerUser(ctx context.Context, newUser *dto.RegisterUserReq
 	return nil
 }
 
-func (s *Service) getUserByEmail(ctx context.Context, email *string) (*User, error) {
-	panic("unimplemented")
+func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error) {
+	u, err := s.store.findByEmail(ctx, payload.Email)
+	if err != nil {
+		return nil, err
+	}
+
+	if !auth.ComparePassword(u.HashedPassword, payload.Password) {
+		return nil, severerrors.ErrInvalidCredentials
+	}
+
+	accessToken, _, err := s.tokenMaker.GenerateToken(
+		false,
+		u.UserID.String(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	existingSession, err := s.store.findSessionByUserIDAndUserAgent(ctx, u.UserID, payload.UserAgent)
+	if err != nil {
+		return nil, err
+	}
+
+	if existingSession != nil {
+
+		switch {
+		case existingSession.ExpiresAt.After(time.Now()) && !existingSession.IsRevoked:
+			return &LoginUserResponse{
+				SessionID:    existingSession.SessionID.String(),
+				AccessToken:  accessToken,
+				RefreshToken: existingSession.RefreshToken,
+			}, nil
+
+		default:
+			s.store.deleteSessionByID(ctx, existingSession.SessionID)
+		}
+	}
+
+	refreshToken, refreshClaims, err := s.tokenMaker.GenerateToken(
+		true,
+		u.UserID.String(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	sessionID, err := uuid.Parse(refreshClaims.RegisteredClaims.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.store.createSession(
+		ctx,
+		&Session{
+			SessionID:    sessionID,
+			UserID:       u.UserID,
+			RefreshToken: refreshToken,
+			ExpiresAt:    refreshClaims.RegisteredClaims.ExpiresAt.Time,
+			UserAgent:    payload.UserAgent,
+			ClientIP:     payload.ClientIP,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &LoginUserResponse{
+		SessionID:    refreshClaims.RegisteredClaims.ID,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 }
 
-func (s *Service) getUserByID(ctx context.Context, id *int) (*User, error) {
+func (s *Service) logoutUser(ctx context.Context, userID *uuid.UUID) (*User, error) {
 	panic("unimplemented")
 }

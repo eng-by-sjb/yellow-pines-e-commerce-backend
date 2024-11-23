@@ -12,7 +12,7 @@ import (
 type APIHandler func(w http.ResponseWriter, r *http.Request) error
 
 // MakeHandler is a middleware that takes handler that returns an error and
-// return a HandlerFunc to create a centralized error handling.
+// return a HandlerFunc to create a centralized error handling, logging and etc.
 func MakeHandler(handler APIHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := handler(w, r); err != nil {
@@ -36,6 +36,14 @@ func MakeHandler(handler APIHandler) http.HandlerFunc {
 						serverError.Errors,
 					)
 				case http.StatusUnprocessableEntity:
+					WriteErrorJSON(
+						w,
+						serverError.StatusCode,
+						serverError.Error(),
+						serverError.Errors,
+					)
+
+				case http.StatusUnauthorized:
 					WriteErrorJSON(
 						w,
 						serverError.StatusCode,
@@ -109,4 +117,15 @@ func writeJSON(w http.ResponseWriter, statusCode int, v any) error {
 	w.WriteHeader(statusCode)
 
 	return json.NewEncoder(w).Encode(v)
+}
+
+// GetClientIP returns the IP of the request.
+func GetClientIP(r *http.Request) string {
+	clientIP := r.RemoteAddr
+	if forwarded := r.Header.Get("X-Forwarded-For"); forwarded != "" {
+		clientIP = r.Header.Get("X-Forwarded-For")
+	} else if real := r.Header.Get("X-Real-IP"); real != "" {
+		clientIP = real
+	}
+	return clientIP
 }
