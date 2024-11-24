@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -119,14 +120,14 @@ func (tm *TokenManager) validateToken(tokenStr string, secret []byte) (isValid b
 
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
-		TokenClaims{},
+		&TokenClaims{},
 		func(token *jwt.Token) (any, error) {
 			return secret, nil
 		},
 	)
 
 	if err != nil {
-		return false, nil, err
+		return false, nil, fmt.Errorf("error parsing token: %s", err)
 	}
 
 	if claims, ok := token.Claims.(*TokenClaims); ok && token.Valid {
