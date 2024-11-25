@@ -31,6 +31,10 @@ func (h *Handler) RegisterRoutes(router *chi.Mux) {
 		"/login",
 		handlerutils.MakeHandler(h.loginUserHandler),
 	)
+	router.Post(
+		"/logout",
+		handlerutils.MakeHandler(h.logoutUserHandler),
+	)
 }
 
 func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) error {
@@ -122,5 +126,51 @@ func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error
 		http.StatusCreated,
 		"access and refresh tokens created",
 		loginUserResponse,
+	)
+}
+
+func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) error {
+	ctx, cancel := context.WithTimeout(
+		r.Context(),
+		(30 * time.Second),
+	)
+	defer cancel()
+
+	var err error
+	defer r.Body.Close()
+
+	refreshToken, err := r.Cookie("refreshToken")
+	if err != nil {
+		switch {
+		case errors.Is(err, http.ErrNoCookie):
+			return severerrors.New(
+				http.StatusForbidden,
+				"missing cookie",
+				nil,
+			)
+		default:
+			return err
+		}
+	}
+
+	if err = h.service.logoutUserHandler(ctx, refreshToken.Value); err != nil {
+		handlerutils.ClearCookie(
+			w,
+			"refreshToken",
+		)
+		// todo: handle err well
+		return err
+	}
+
+	handlerutils.ClearCookie(
+		w,
+		"refreshToken",
+	)
+
+	return handlerutils.WriteSuccessJSON(
+		w,
+		http.StatusOK,
+		"user logged out",
+		nil,
 	)
 }

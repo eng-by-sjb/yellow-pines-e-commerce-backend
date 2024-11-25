@@ -15,6 +15,7 @@ var (
 	ErrExpiredAccessToken    = errors.New("access token expired")
 	ErrExpiredRefreshToken   = errors.New("refresh token expired")
 	ErrInternalServerError   = errors.New("internal server error")
+	ErrSessionNotFound       = errors.New("session not found")
 	ErrUnauthorizedAccess    = errors.New("unauthorized access")
 	ErrUnauthorized          = errors.New("unauthorized")
 	ErrForbiddenAccess       = errors.New("forbidden access")

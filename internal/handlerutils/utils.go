@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
 )
@@ -128,4 +129,18 @@ func GetClientIP(r *http.Request) string {
 		clientIP = real
 	}
 	return clientIP
+}
+
+func ClearCookie(w http.ResponseWriter, name string) {
+	cookie := http.Cookie{
+		Name:     name,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		Expires:  time.Unix(0, 0),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	}
+	http.SetCookie(w, &cookie)
 }

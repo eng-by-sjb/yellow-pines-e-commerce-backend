@@ -9,13 +9,21 @@ import (
 	"github.com/google/uuid"
 )
 
-type Storer interface {
+type UserStorer interface {
 	create(ctx context.Context, user *User) error
 	findByEmail(ctx context.Context, email string) (*User, error)
 	findByID(ctx context.Context, userID uuid.UUID) (*User, error)
+}
+
+type SessionStorer interface {
 	createSession(ctx context.Context, session *Session) error
 	findSessionByUserIDAndUserAgent(ctx context.Context, userID uuid.UUID, UserAgent string) (*Session, error)
 	deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error
+	findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error)
+}
+type Storer interface {
+	UserStorer
+	SessionStorer
 }
 
 type Store struct {
@@ -168,30 +176,31 @@ func (s *Store) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) erro
 	return nil
 }
 
-// func (s *Store) findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
-// 	session := new(Session)
-// 	err := s.db.QueryRowContext(
-// 		ctx,
-// 		"SELECT * FROM sessions WHERE session_id = $1",
-// 		sessionID,
-// 	).Scan(
-// 		&session.SessionID,
-// 		&session.UserID,
-// 		&session.RefreshToken,
-// 		&session.ExpiresAt,
-// 		&session.UserAgent,
-// 		&session.ClientIP,
-// 		&session.CreatedAt,
-// 	)
-// 	if err != nil {
-// 		return nil, fmt.Errorf(
-// 			"failed to find session by id in user store: %w",
-// 			err,
-// 		)
-// 	}
+func (s *Store) findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
+	// session := new(Session)
+	rows, err := s.db.QueryContext(
+		ctx,
+		"SELECT * FROM sessions WHERE session_id = $1",
+		sessionID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"failed to find session by id in user store: %w",
+			err,
+		)
+	}
+	defer rows.Close()
 
-// 	return session, nil
-// }
+	session := new(Session)
+	for rows.Next() {
+		session, err = scanRowsIntoSession(rows, session)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return session, nil
+}
 
 func (s *Store) getUserWithContext(ctx context.Context, query string, args ...any) (*User, error) {
 	rows, err := s.db.QueryContext(

@@ -13,7 +13,7 @@ import (
 type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
 	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
-	logoutUser(ctx context.Context, userID *uuid.UUID) (*User, error)
+	logoutUserHandler(ctx context.Context, refreshToken string) error
 }
 
 type Service struct {
@@ -138,6 +138,30 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 	}, nil
 }
 
-func (s *Service) logoutUser(ctx context.Context, userID *uuid.UUID) (*User, error) {
-	panic("unimplemented")
+func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) error {
+	isValid, claims, err := s.tokenMaker.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return err
+	}
+
+	if !isValid {
+		return severerrors.ErrInvalidRefreshToken
+	}
+
+	sessionID, err := uuid.Parse(claims.ID)
+	if err != nil {
+		return err
+	}
+
+	if session, err := s.store.findSessionByID(ctx, sessionID); err != nil {
+		return err
+	} else if session.SessionID == uuid.Nil {
+		return severerrors.ErrSessionNotFound
+	}
+
+	if err := s.store.deleteSessionByID(ctx, sessionID); err != nil {
+		return err
+	}
+
+	return nil
 }
