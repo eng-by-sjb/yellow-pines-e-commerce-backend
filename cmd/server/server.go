@@ -15,10 +15,10 @@ import (
 type Server struct {
 	addr         string
 	db           *sql.DB
-	tokenManager *auth.TokenManager
+	tokenManager *auth.TokenService
 }
 
-func NewServer(addr string, db *sql.DB, tokenManager *auth.TokenManager) *Server {
+func NewServer(addr string, db *sql.DB, tokenManager *auth.TokenService) *Server {
 	return &Server{
 		addr:         addr,
 		db:           db,

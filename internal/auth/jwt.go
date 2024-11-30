@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -13,23 +14,29 @@ type TokenClaims struct {
 	jwt.RegisteredClaims
 }
 
-type TokenMaker interface {
+type RefreshTokens struct {
+	AccessToken        string       `json:"accessToken"`
+	RefreshToken       string       `json:"refreshToken"`
+	RefreshTokenClaims *TokenClaims `json:"refreshTokenClaims"`
+}
+
+type TokenServicer interface {
 	GenerateToken(isRefreshToken bool, userID string) (string, *TokenClaims, error)
 	ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
 	ValidateRefreshToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
-	RefreshTokens(refreshToken string) (newAccessToken string, newRefreshToken string, err error)
+	RefreshTokens(userID string) (*RefreshTokens, error)
 }
 
-type TokenManager struct {
+type TokenService struct {
 	AccessTokenSecret        []byte
 	RefreshTokenSecret       []byte
 	AccessTokenExpiryInSecs  int64
 	RefreshTokenExpiryInSecs int64
 }
 
-func NewTokenManager(accessTokenSecret, refreshTokenSecret string,
-	accessTokenExpiryInSecs, refreshTokenExpiryInSecs int64) *TokenManager {
-	return &TokenManager{
+func NewTokenService(accessTokenSecret, refreshTokenSecret string,
+	accessTokenExpiryInSecs, refreshTokenExpiryInSecs int64) *TokenService {
+	return &TokenService{
 		AccessTokenSecret:        []byte(accessTokenSecret),
 		RefreshTokenSecret:       []byte(refreshTokenSecret),
 		AccessTokenExpiryInSecs:  accessTokenExpiryInSecs,
@@ -37,7 +44,7 @@ func NewTokenManager(accessTokenSecret, refreshTokenSecret string,
 	}
 }
 
-func (tm *TokenManager) GenerateToken(isRefreshToken bool, userID string) (string, *TokenClaims, error) {
+func (tm *TokenService) GenerateToken(isRefreshToken bool, userID string) (string, *TokenClaims, error) {
 	var (
 		tokenID string
 		secret  []byte
@@ -88,35 +95,39 @@ func (tm *TokenManager) GenerateToken(isRefreshToken bool, userID string) (strin
 	return tokenStr, &claims, nil
 }
 
-func (tm *TokenManager) ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error) {
+func (tm *TokenService) ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error) {
 	return tm.validateToken(tokenStr, tm.AccessTokenSecret)
 }
 
-func (tm *TokenManager) ValidateRefreshToken(tokenStr string) (isValid bool, claims *TokenClaims, err error) {
+func (tm *TokenService) ValidateRefreshToken(tokenStr string) (isValid bool, claims *TokenClaims, err error) {
 	return tm.validateToken(tokenStr, tm.RefreshTokenSecret)
 }
 
-func (tm *TokenManager) RefreshTokens(refreshToken string) (newAccessToken string, newRefreshToken string, err error) {
-	_, claims, err := tm.validateToken(refreshToken, tm.RefreshTokenSecret)
+func (tm *TokenService) RefreshTokens(userID string) (*RefreshTokens, error) {
+	// _, claims, err := tm.validateToken(refreshToken, tm.RefreshTokenSecret)
+	// if err != nil {
+	// 	return "", "", err
+	// }
+
+	newAccessToken, _, err := tm.GenerateToken(false, userID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	newAccessToken, _, err = tm.GenerateToken(false, claims.UserID)
+	newRefreshToken, claims, err := tm.GenerateToken(true, userID)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	newRefreshToken, _, err = tm.GenerateToken(true, claims.UserID)
-	if err != nil {
-		return "", "", err
-	}
-
-	return newAccessToken, newRefreshToken, nil
+	return &RefreshTokens{
+		AccessToken:        newAccessToken,
+		RefreshToken:       newRefreshToken,
+		RefreshTokenClaims: claims,
+	}, nil
 
 }
 
-func (tm *TokenManager) validateToken(tokenStr string, secret []byte) (isValid bool, claims *TokenClaims, err error) {
+func (tm *TokenService) validateToken(tokenStr string, secret []byte) (isValid bool, claims *TokenClaims, err error) {
 
 	token, err := jwt.ParseWithClaims(
 		tokenStr,
@@ -127,6 +138,9 @@ func (tm *TokenManager) validateToken(tokenStr string, secret []byte) (isValid b
 	)
 
 	if err != nil {
+		if errors.Is(err, jwt.ErrTokenExpired) { // todo: revisit this
+			return false, nil, nil
+		}
 		return false, nil, fmt.Errorf("error parsing token: %s", err)
 	}
 

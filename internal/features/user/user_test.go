@@ -172,6 +172,9 @@ func (m *mockStore) findSessionByUserIDAndUserAgent(ctx context.Context, userID 
 func (m *mockStore) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error {
 	panic("unimplemented")
 }
+func (m *mockStore) deleteAllSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
+	panic("unimplemented")
+}
 
 func (m *mockStore) findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
 	panic("unimplemented")

@@ -14,17 +14,18 @@ type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
 	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
 	logoutUserHandler(ctx context.Context, refreshToken string) error
+	renewTokens(ctx context.Context, refreshToken string) (*RenewedTokensResponse, error)
 }
 
 type Service struct {
-	store      Storer
-	tokenMaker auth.TokenMaker
+	store        Storer
+	TokenService auth.TokenServicer
 }
 
-func NewService(store Storer, tokenMaker auth.TokenMaker) *Service {
+func NewService(store Storer, tokenMaker auth.TokenServicer) *Service {
 	return &Service{
-		store:      store,
-		tokenMaker: tokenMaker,
+		store:        store,
+		TokenService: tokenMaker,
 	}
 }
 
@@ -75,7 +76,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 		return nil, severerrors.ErrInvalidCredentials
 	}
 
-	accessToken, _, err := s.tokenMaker.GenerateToken(
+	accessToken, _, err := s.TokenService.GenerateToken(
 		false,
 		u.UserID.String(),
 	)
@@ -103,7 +104,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 		}
 	}
 
-	refreshToken, refreshClaims, err := s.tokenMaker.GenerateToken(
+	refreshToken, refreshClaims, err := s.TokenService.GenerateToken(
 		true,
 		u.UserID.String(),
 	)
@@ -139,7 +140,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 }
 
 func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) error {
-	isValid, claims, err := s.tokenMaker.ValidateRefreshToken(refreshToken)
+	isValid, claims, err := s.TokenService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return err
 	}
@@ -164,4 +165,82 @@ func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) er
 	}
 
 	return nil
+}
+
+func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*RenewedTokensResponse, error) {
+	//validate refresh token
+	isValid, claims, err := s.TokenService.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	if !isValid {
+		return nil, severerrors.ErrInvalidRefreshToken
+	}
+
+	sessionID, err := uuid.Parse(claims.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	session, err := s.store.findSessionByID(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// if there is no session with that session id, delete all sessions for the
+	//user. Detect token reuse
+	if session.SessionID == uuid.Nil {
+		err := s.store.deleteAllSessionsByUserID(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+
+		return nil, severerrors.ErrSessionNotFound
+	}
+
+	if session.IsRevoked {
+		return nil, severerrors.ErrInvalidRefreshToken
+	}
+
+	if session.ExpiresAt.Before(time.Now()) {
+		return nil, severerrors.ErrInvalidRefreshToken
+	}
+
+	refreshTokens, err := s.TokenService.RefreshTokens(
+		session.UserID.String(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	newSessionID, err := uuid.Parse(refreshTokens.RefreshTokenClaims.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	err = s.store.createSession(
+		ctx,
+		&Session{
+			SessionID:    newSessionID,
+			UserID:       session.UserID,
+			RefreshToken: refreshTokens.RefreshToken,
+			ExpiresAt:    refreshTokens.RefreshTokenClaims.ExpiresAt.Time,
+			UserAgent:    session.UserAgent,
+			ClientIP:     session.ClientIP,
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RenewedTokensResponse{
+		AccessToken:  refreshTokens.AccessToken,
+		RefreshToken: refreshTokens.RefreshToken,
+	}, nil
 }

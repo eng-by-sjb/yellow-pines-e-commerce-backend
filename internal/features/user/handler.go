@@ -35,6 +35,10 @@ func (h *Handler) RegisterRoutes(router *chi.Mux) {
 		"/logout",
 		handlerutils.MakeHandler(h.logoutUserHandler),
 	)
+	router.Post(
+		"/tokens/renew",
+		handlerutils.MakeHandler(h.renewTokensHandler),
+	)
 }
 
 func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) error {
@@ -145,7 +149,7 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		case errors.Is(err, http.ErrNoCookie):
 			return severerrors.New(
 				http.StatusForbidden,
-				"missing cookie",
+				severerrors.ErrNoRefreshTokenCookie.Error(),
 				nil,
 			)
 		default:
@@ -173,4 +177,53 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		"user logged out",
 		nil,
 	)
+}
+
+func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) error {
+	ctx, cancel := context.WithTimeout(
+		r.Context(),
+		(30 * time.Second),
+	)
+	defer cancel()
+
+	var err error
+
+	refreshToken, err := r.Cookie("refreshToken")
+	if err != nil {
+		switch {
+		case errors.Is(err, http.ErrNoCookie):
+			return severerrors.New(
+				http.StatusForbidden,
+				severerrors.ErrNoRefreshTokenCookie.Error(),
+				nil,
+			)
+		default:
+			return err
+		}
+	}
+
+	renewedTokens, err := h.service.renewTokens(
+		ctx,
+		refreshToken.Value,
+	)
+	if err != nil {
+		switch {
+		case errors.Is(err, severerrors.ErrInvalidRefreshToken):
+			return severerrors.New(
+				http.StatusUnauthorized,
+				severerrors.ErrInvalidRefreshToken.Error(),
+				nil,
+			)
+		default:
+			return err
+		}
+	}
+
+	return handlerutils.WriteSuccessJSON(
+		w,
+		http.StatusOK,
+		"tokens renewed",
+		renewedTokens,
+	)
+
 }

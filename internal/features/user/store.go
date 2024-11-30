@@ -19,6 +19,7 @@ type SessionStorer interface {
 	createSession(ctx context.Context, session *Session) error
 	findSessionByUserIDAndUserAgent(ctx context.Context, userID uuid.UUID, UserAgent string) (*Session, error)
 	deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error
+	deleteAllSessionsByUserID(ctx context.Context, userID uuid.UUID) error
 	findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error)
 }
 type Storer interface {
@@ -160,20 +161,22 @@ func (s *Store) findSessionByUserIDAndUserAgent(ctx context.Context, userID uuid
 	return session, nil
 }
 
-func (s *Store) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error {
-	_, err := s.db.ExecContext(
+func (s *Store) deleteAllSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
+	return deleteSessionWithContext(
 		ctx,
+		s,
+		"DELETE FROM sessions WHERE user_id = $1",
+		userID,
+	)
+}
+
+func (s *Store) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error {
+	return deleteSessionWithContext(
+		ctx,
+		s,
 		"DELETE FROM sessions WHERE session_id = $1",
 		sessionID,
 	)
-	if err != nil {
-		return fmt.Errorf(
-			"failed to delete session in user store: %w",
-			err,
-		)
-	}
-
-	return nil
 }
 
 func (s *Store) findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
@@ -297,4 +300,20 @@ func scanRowsIntoSession(rows *sql.Rows, session *Session) (*Session, error) {
 	}
 
 	return session, nil
+}
+
+func deleteSessionWithContext(ctx context.Context, s *Store, exec string, args ...any) error {
+	_, err := s.db.ExecContext(
+		ctx,
+		exec,
+		args...,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"failed to delete session in user store: %w",
+			err,
+		)
+	}
+
+	return nil
 }

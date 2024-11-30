@@ -20,6 +20,7 @@ var (
 	ErrUnauthorized          = errors.New("unauthorized")
 	ErrForbiddenAccess       = errors.New("forbidden access")
 	ErrRequestTimeout        = errors.New("request timeout")
+	ErrNoRefreshTokenCookie  = errors.New("missing refresh token cookie")
 )
 
 type ServerError struct {

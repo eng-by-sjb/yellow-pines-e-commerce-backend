@@ -51,6 +51,13 @@ func MakeHandler(handler APIHandler) http.HandlerFunc {
 						serverError.Error(),
 						serverError.Errors,
 					)
+				case http.StatusForbidden:
+					WriteErrorJSON(
+						w,
+						serverError.StatusCode,
+						serverError.Error(),
+						serverError.Errors,
+					)
 				}
 			} else {
 				WriteErrorJSON(

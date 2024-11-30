@@ -30,7 +30,7 @@ func main() {
 	srv := server.NewServer(
 		srvAddr,
 		db,
-		auth.NewTokenManager(
+		auth.NewTokenService(
 			accessTokenSecret,
 			refreshTokenSecret,
 			accessTokenExpiryInSecs,
