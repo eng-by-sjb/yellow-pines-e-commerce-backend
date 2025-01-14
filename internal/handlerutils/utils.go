@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/servererrors"
 )
 
 type APIHandler func(w http.ResponseWriter, r *http.Request) error
@@ -18,7 +18,7 @@ func MakeHandler(handler APIHandler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := handler(w, r); err != nil {
 			log.Println(err)
-			var serverError *severerrors.ServerError
+			var serverError *servererrors.ServerError
 
 			if errors.As(err, &serverError) {
 				switch serverError.StatusCode {

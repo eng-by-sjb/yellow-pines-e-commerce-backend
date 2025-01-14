@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/handlerutils"
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/servererrors"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/validate"
 	"github.com/go-chi/chi"
 )
@@ -53,27 +53,27 @@ func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) er
 	defer r.Body.Close()
 
 	if err = handlerutils.ParseJSON(r, &payload); err != nil {
-		return severerrors.New(
+		return servererrors.New(
 			http.StatusBadRequest,
-			severerrors.ErrInvalidRequestPayload.Error(),
+			servererrors.ErrInvalidRequestPayload.Error(),
 			nil,
 		)
 	}
 
 	if err = validate.StructFields(payload); err != nil {
-		return severerrors.New(
+		return servererrors.New(
 			http.StatusUnprocessableEntity,
-			severerrors.ErrValidationFailed.Error(),
+			servererrors.ErrValidationFailed.Error(),
 			err,
 		)
 	}
 
 	if err = h.service.registerUser(ctx, payload); err != nil {
 		switch {
-		case errors.Is(err, severerrors.ErrUserAlreadyExists):
-			return severerrors.New(
+		case errors.Is(err, servererrors.ErrUserAlreadyExists):
+			return servererrors.New(
 				http.StatusConflict,
-				severerrors.ErrUserAlreadyExists.Error(),
+				servererrors.ErrUserAlreadyExists.Error(),
 				nil,
 			)
 		default:
@@ -114,10 +114,10 @@ func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 
 		switch {
-		case errors.Is(err, severerrors.ErrInvalidCredentials):
-			return severerrors.New(
+		case errors.Is(err, servererrors.ErrInvalidCredentials):
+			return servererrors.New(
 				http.StatusUnauthorized,
-				severerrors.ErrInvalidCredentials.Error(),
+				servererrors.ErrInvalidCredentials.Error(),
 				nil,
 			)
 		default:
@@ -147,9 +147,9 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 	if err != nil {
 		switch {
 		case errors.Is(err, http.ErrNoCookie):
-			return severerrors.New(
+			return servererrors.New(
 				http.StatusForbidden,
-				severerrors.ErrNoRefreshTokenCookie.Error(),
+				servererrors.ErrNoRefreshTokenCookie.Error(),
 				nil,
 			)
 		default:
@@ -192,9 +192,9 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 	if err != nil {
 		switch {
 		case errors.Is(err, http.ErrNoCookie):
-			return severerrors.New(
+			return servererrors.New(
 				http.StatusForbidden,
-				severerrors.ErrNoRefreshTokenCookie.Error(),
+				servererrors.ErrNoRefreshTokenCookie.Error(),
 				nil,
 			)
 		default:
@@ -208,10 +208,10 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 	)
 	if err != nil {
 		switch {
-		case errors.Is(err, severerrors.ErrInvalidRefreshToken):
-			return severerrors.New(
+		case errors.Is(err, servererrors.ErrInvalidRefreshToken):
+			return servererrors.New(
 				http.StatusUnauthorized,
-				severerrors.ErrInvalidRefreshToken.Error(),
+				servererrors.ErrInvalidRefreshToken.Error(),
 				nil,
 			)
 		default:

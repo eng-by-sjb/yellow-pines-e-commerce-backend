@@ -1,4 +1,4 @@
-package severerrors
+package servererrors
 
 import (
 	"errors"
@@ -21,6 +21,7 @@ var (
 	ErrForbiddenAccess       = errors.New("forbidden access")
 	ErrRequestTimeout        = errors.New("request timeout")
 	ErrNoRefreshTokenCookie  = errors.New("missing refresh token cookie")
+	ErrProductAlreadyExists  = errors.New("product already exists")
 )
 
 type ServerError struct {

@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
-	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/severerrors"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/servererrors"
 	"github.com/google/uuid"
 )
 
@@ -42,7 +42,7 @@ func (s *Service) registerUser(ctx context.Context, newUser *RegisterUserRequest
 	//todo: to Decouple service from external depends. put uuid.Nil in a
 	// todo: --- variable somewhere and import it here
 	if user.UserID != uuid.Nil {
-		return severerrors.ErrUserAlreadyExists
+		return servererrors.ErrUserAlreadyExists
 	}
 
 	hashedPassword, err := auth.HashPassword(
@@ -73,7 +73,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 	}
 
 	if !auth.ComparePassword(u.HashedPassword, payload.Password) {
-		return nil, severerrors.ErrInvalidCredentials
+		return nil, servererrors.ErrInvalidCredentials
 	}
 
 	accessToken, _, err := s.TokenService.GenerateToken(
@@ -146,7 +146,7 @@ func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) er
 	}
 
 	if !isValid {
-		return severerrors.ErrInvalidRefreshToken
+		return servererrors.ErrInvalidRefreshToken
 	}
 
 	sessionID, err := uuid.Parse(claims.ID)
@@ -157,7 +157,7 @@ func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) er
 	if session, err := s.store.findSessionByID(ctx, sessionID); err != nil {
 		return err
 	} else if session.SessionID == uuid.Nil {
-		return severerrors.ErrSessionNotFound
+		return servererrors.ErrSessionNotFound
 	}
 
 	if err := s.store.deleteSessionByID(ctx, sessionID); err != nil {
@@ -175,7 +175,7 @@ func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*Renewe
 	}
 
 	if !isValid {
-		return nil, severerrors.ErrInvalidRefreshToken
+		return nil, servererrors.ErrInvalidRefreshToken
 	}
 
 	sessionID, err := uuid.Parse(claims.ID)
@@ -201,15 +201,15 @@ func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*Renewe
 			return nil, err
 		}
 
-		return nil, severerrors.ErrSessionNotFound
+		return nil, servererrors.ErrSessionNotFound
 	}
 
 	if session.IsRevoked {
-		return nil, severerrors.ErrInvalidRefreshToken
+		return nil, servererrors.ErrInvalidRefreshToken
 	}
 
 	if session.ExpiresAt.Before(time.Now()) {
-		return nil, severerrors.ErrInvalidRefreshToken
+		return nil, servererrors.ErrInvalidRefreshToken
 	}
 
 	refreshTokens, err := s.TokenService.RefreshTokens(
