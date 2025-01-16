@@ -221,7 +221,7 @@ func (s *Store) getUserWithContext(ctx context.Context, query string, args ...an
 
 	user := new(User) // initial user to its zero values
 	for rows.Next() {
-		user, err = scanRowsIntoUser(rows, user)
+		err = scanRowsIntoUser(rows, user)
 		if err != nil {
 			return nil, err
 
@@ -245,9 +245,9 @@ func (s *Store) getUserWithContext(ctx context.Context, query string, args ...an
 
 // scanRowsIntoUser takes in sql rows and a user that has been initialized to
 // its zero values and returns the user and nil or nil and an error if any.
-func scanRowsIntoUser(rows *sql.Rows, user *User) (*User, error) {
+func scanRowsIntoUser(rows *sql.Rows, user *User) error {
 	if user == nil {
-		return nil, errors.New(
+		return errors.New(
 			"scanRowsIntoUser err in user store",
 		)
 	}
@@ -264,13 +264,13 @@ func scanRowsIntoUser(rows *sql.Rows, user *User) (*User, error) {
 		&user.UpdatedAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf(
+		return fmt.Errorf(
 			"failed to scan row into user in user store: %w",
 			err,
 		)
 	}
 
-	return user, nil
+	return nil
 }
 
 func scanRowsIntoSession(rows *sql.Rows, session *Session) (*Session, error) {
