@@ -187,6 +187,10 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 	defer cancel()
 
 	var err error
+	payload := new(RenewTokensRequest)
+
+	payload.ClientIP = handlerutils.GetClientIP(r)
+	payload.UserAgent = r.UserAgent()
 
 	refreshToken, err := r.Cookie("refreshToken")
 	if err != nil {
@@ -202,9 +206,11 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 		}
 	}
 
+	payload.RefreshToken = refreshToken.Value
+
 	renewedTokens, err := h.service.renewTokens(
 		ctx,
-		refreshToken.Value,
+		payload,
 	)
 	if err != nil {
 		switch {
@@ -212,6 +218,13 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 			return servererrors.New(
 				http.StatusUnauthorized,
 				servererrors.ErrInvalidRefreshToken.Error(),
+				nil,
+			)
+
+		case errors.Is(err, servererrors.ErrSessionNotFound):
+			return servererrors.New(
+				http.StatusUnauthorized,
+				servererrors.ErrSessionNotFound.Error(),
 				nil,
 			)
 		default:

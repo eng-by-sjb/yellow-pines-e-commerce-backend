@@ -14,7 +14,7 @@ type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
 	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
 	logoutUser(ctx context.Context, refreshToken string) error
-	renewTokens(ctx context.Context, refreshToken string) (*RenewedTokensResponse, error)
+	renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensResponse, error)
 }
 
 type Service struct {
@@ -167,9 +167,9 @@ func (s *Service) logoutUser(ctx context.Context, refreshToken string) error {
 	return nil
 }
 
-func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*RenewedTokensResponse, error) {
+func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensResponse, error) {
 	//validate refresh token
-	isValid, claims, err := s.TokenService.ValidateRefreshToken(refreshToken)
+	isValid, claims, err := s.TokenService.ValidateRefreshToken(payload.RefreshToken)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +208,25 @@ func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*Renewe
 		return nil, servererrors.ErrInvalidRefreshToken
 	}
 
-	if session.ExpiresAt.Before(time.Now()) {
+	// if jwt and session is valid but the info in the payload of req and jwt is
+	// invalid, then its compromised. Delete that session
+	if session.ExpiresAt.Before(time.Now()) ||
+		!session.ExpiresAt.Equal(claims.ExpiresAt.Time) ||
+		session.UserID != userID ||
+		session.UserAgent != payload.UserAgent ||
+		session.ClientIP != payload.ClientIP {
+		err := s.store.deleteSessionByID(ctx, sessionID)
+		if err != nil {
+			return nil, err
+		}
+
 		return nil, servererrors.ErrInvalidRefreshToken
+	}
+
+	// delete and continue token rotation creation
+	err = s.store.deleteSessionByID(ctx, sessionID)
+	if err != nil {
+		return nil, err
 	}
 
 	refreshTokens, err := s.TokenService.RefreshTokens(
@@ -231,15 +248,15 @@ func (s *Service) renewTokens(ctx context.Context, refreshToken string) (*Renewe
 			UserID:       session.UserID,
 			RefreshToken: refreshTokens.RefreshToken,
 			ExpiresAt:    refreshTokens.RefreshTokenClaims.ExpiresAt.Time,
-			UserAgent:    session.UserAgent,
-			ClientIP:     session.ClientIP,
+			UserAgent:    payload.UserAgent,
+			ClientIP:     payload.ClientIP,
 		},
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &RenewedTokensResponse{
+	return &RenewTokensResponse{
 		AccessToken:  refreshTokens.AccessToken,
 		RefreshToken: refreshTokens.RefreshToken,
 	}, nil

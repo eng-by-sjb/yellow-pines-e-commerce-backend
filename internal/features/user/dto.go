@@ -15,6 +15,12 @@ type LoginUserRequest struct {
 	ClientIP  string `json:"clientIP" validate:"required"`
 }
 
+type RenewTokensRequest struct {
+	RefreshToken string `json:"refreshToken" validate:"required"`
+	UserAgent    string `json:"userAgent" validate:"required"`
+	ClientIP     string `json:"clientIP" validate:"required"`
+}
+
 // Responses
 type LoginUserResponse struct {
 	SessionID    string `json:"sessionId"`
@@ -22,7 +28,7 @@ type LoginUserResponse struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
-type RenewedTokensResponse struct {
+type RenewTokensResponse struct {
 	AccessToken  string `json:"accessToken"`
 	RefreshToken string `json:"refreshToken"`
 }
