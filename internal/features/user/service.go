@@ -13,7 +13,7 @@ import (
 type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
 	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
-	logoutUserHandler(ctx context.Context, refreshToken string) error
+	logoutUser(ctx context.Context, refreshToken string) error
 	renewTokens(ctx context.Context, refreshToken string) (*RenewedTokensResponse, error)
 }
 
@@ -139,7 +139,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 	}, nil
 }
 
-func (s *Service) logoutUserHandler(ctx context.Context, refreshToken string) error {
+func (s *Service) logoutUser(ctx context.Context, refreshToken string) error {
 	isValid, claims, err := s.TokenService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return err

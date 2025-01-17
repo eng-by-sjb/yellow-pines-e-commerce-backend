@@ -157,7 +157,7 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		}
 	}
 
-	if err = h.service.logoutUserHandler(ctx, refreshToken.Value); err != nil {
+	if err = h.service.logoutUser(ctx, refreshToken.Value); err != nil {
 		handlerutils.ClearCookie(
 			w,
 			"refreshToken",
