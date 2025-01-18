@@ -274,8 +274,8 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 	return handlerutils.WriteSuccessJSON(
 		w,
 		http.StatusOK,
-		"tokens renewed",
-		renewedTokens,
+		"tokens renewed and attached to cookies",
+		nil,
 	)
 
 }
