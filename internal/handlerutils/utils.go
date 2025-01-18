@@ -161,16 +161,18 @@ func SetCookies(w http.ResponseWriter, cookies []Cookie) {
 	}
 }
 
-func ClearCookie(w http.ResponseWriter, name string) {
-	cookie := http.Cookie{
-		Name:     name,
-		Value:    "",
-		Path:     "/",
-		MaxAge:   -1,
-		Expires:  time.Unix(0, 0),
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteStrictMode,
+func ClearCookie(w http.ResponseWriter, cookiesNames *[]string) {
+	for _, name := range *cookiesNames {
+		cookie := http.Cookie{
+			Name:     name,
+			Value:    "",
+			Path:     "/",
+			MaxAge:   -1,
+			Expires:  time.Unix(0, 0),
+			HttpOnly: true,
+			Secure:   true,
+			SameSite: http.SameSiteStrictMode,
+		}
+		http.SetCookie(w, &cookie)
 	}
-	http.SetCookie(w, &cookie)
 }

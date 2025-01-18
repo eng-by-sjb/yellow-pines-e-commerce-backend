@@ -174,10 +174,15 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		}
 	}
 
+	cookiesNames := []string{
+		"accessToken",
+		"refreshToken",
+	}
+
 	if err = h.service.logoutUser(ctx, refreshToken.Value); err != nil {
 		handlerutils.ClearCookie(
 			w,
-			"refreshToken",
+			&cookiesNames,
 		)
 		// todo: handle err well
 		return err
@@ -185,7 +190,7 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 
 	handlerutils.ClearCookie(
 		w,
-		"refreshToken",
+		&cookiesNames,
 	)
 
 	return handlerutils.WriteSuccessJSON(
