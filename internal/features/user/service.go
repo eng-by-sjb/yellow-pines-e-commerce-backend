@@ -150,7 +150,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 }
 
 func (s *Service) logoutUser(ctx context.Context, refreshToken string) error {
-	isValid, claims, err := s.TokenService.ValidateRefreshToken(refreshToken)
+	isValid, refreshTokenClaims, err := s.TokenService.ValidateRefreshToken(refreshToken)
 	if err != nil {
 		return err
 	}
@@ -159,14 +159,27 @@ func (s *Service) logoutUser(ctx context.Context, refreshToken string) error {
 		return servererrors.ErrInvalidRefreshToken
 	}
 
-	sessionID, err := uuid.Parse(claims.ID)
+	sessionID, err := uuid.Parse(refreshTokenClaims.ID)
 	if err != nil {
 		return err
 	}
 
-	if session, err := s.store.findSessionByID(ctx, sessionID); err != nil {
+	userID, err := uuid.Parse(refreshTokenClaims.UserID)
+	if err != nil {
 		return err
-	} else if session.SessionID == uuid.Nil {
+	}
+
+	session, err := s.store.findSessionByID(ctx, sessionID)
+	if err != nil {
+		return err
+	}
+
+	if session.SessionID == uuid.Nil {
+		err := s.store.deleteAllSessionsByUserID(ctx, userID)
+		if err != nil {
+			return err
+		}
+
 		return servererrors.ErrSessionNotFound
 	}
 
