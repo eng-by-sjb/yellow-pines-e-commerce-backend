@@ -249,6 +249,23 @@ func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) err
 		}
 	}
 
+	cookies := []handlerutils.Cookie{
+		{
+			Name:    "accessToken",
+			Value:   renewedTokens.AccessToken.Value,
+			Expires: renewedTokens.AccessToken.Expires,
+		},
+		{
+			Name:    "refreshToken",
+			Value:   renewedTokens.RefreshToken.Value,
+			Expires: renewedTokens.RefreshToken.Expires,
+		},
+	}
+	handlerutils.SetCookies(
+		w,
+		cookies,
+	)
+
 	return handlerutils.WriteSuccessJSON(
 		w,
 		http.StatusOK,

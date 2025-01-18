@@ -14,7 +14,7 @@ type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
 	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserCookiesResponse, error)
 	logoutUser(ctx context.Context, refreshToken string) error
-	renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensResponse, error)
+	renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensCookiesResponse, error)
 }
 
 type Service struct {
@@ -177,7 +177,7 @@ func (s *Service) logoutUser(ctx context.Context, refreshToken string) error {
 	return nil
 }
 
-func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensResponse, error) {
+func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensCookiesResponse, error) {
 	//validate refresh token
 	isValid, claims, err := s.TokenService.ValidateRefreshToken(payload.RefreshToken)
 	if err != nil {
@@ -246,7 +246,7 @@ func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) 
 		return nil, err
 	}
 
-	newSessionID, err := uuid.Parse(refreshTokens.RefreshTokenClaims.ID)
+	newSessionID, err := uuid.Parse(refreshTokens.NewRefreshTokenClaims.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -256,8 +256,8 @@ func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) 
 		&Session{
 			SessionID:    newSessionID,
 			UserID:       session.UserID,
-			RefreshToken: refreshTokens.RefreshToken,
-			ExpiresAt:    refreshTokens.RefreshTokenClaims.ExpiresAt.Time,
+			RefreshToken: refreshTokens.NewRefreshToken,
+			ExpiresAt:    refreshTokens.NewRefreshTokenClaims.ExpiresAt.Time,
 			UserAgent:    payload.UserAgent,
 			ClientIP:     payload.ClientIP,
 		},
@@ -266,8 +266,14 @@ func (s *Service) renewTokens(ctx context.Context, payload *RenewTokensRequest) 
 		return nil, err
 	}
 
-	return &RenewTokensResponse{
-		AccessToken:  refreshTokens.AccessToken,
-		RefreshToken: refreshTokens.RefreshToken,
+	return &RenewTokensCookiesResponse{
+		AccessToken: TokenDetails{
+			Value:   refreshTokens.NewAccessToken,
+			Expires: refreshTokens.NewAccessTokenClaims.ExpiresAt.Time,
+		},
+		RefreshToken: TokenDetails{
+			Value:   refreshTokens.NewRefreshToken,
+			Expires: refreshTokens.NewRefreshTokenClaims.ExpiresAt.Time,
+		},
 	}, nil
 }

@@ -29,7 +29,11 @@ type LoginUserCookiesResponse struct {
 	RefreshToken TokenDetails `json:"refreshToken"`
 }
 
-type RenewTokensResponse struct {
+type RenewTokensCookiesResponse struct {
+	AccessToken  TokenDetails `json:"accessToken"`
+	RefreshToken TokenDetails `json:"refreshToken"`
+}
+
 // TokenDetails represents the data for access and refresh tokens.
 type TokenDetails struct {
 	Value   string    `json:"value"`
