@@ -138,6 +138,29 @@ func GetClientIP(r *http.Request) string {
 	return clientIP
 }
 
+type Cookie struct {
+	Name    string
+	Value   string
+	Expires time.Time
+}
+
+func SetCookies(w http.ResponseWriter, cookies []Cookie) {
+	for _, cookie := range cookies {
+		http.SetCookie(
+			w,
+			&http.Cookie{
+				Name:     cookie.Name,
+				Value:    cookie.Value,
+				Expires:  cookie.Expires,
+				Secure:   false, // todo: get env for production mode
+				HttpOnly: true,
+				SameSite: http.SameSiteStrictMode,
+				Path:     "/",
+			},
+		)
+	}
+}
+
 func ClearCookie(w http.ResponseWriter, name string) {
 	cookie := http.Cookie{
 		Name:     name,

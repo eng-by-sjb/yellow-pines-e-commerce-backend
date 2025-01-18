@@ -1,5 +1,7 @@
 package user
 
+import "time"
+
 // Requests
 type RegisterUserRequest struct {
 	FirstName string `json:"firstName" validate:"required,min=2,max=15,noAllRepeatingChars"`
@@ -22,13 +24,14 @@ type RenewTokensRequest struct {
 }
 
 // Responses
-type LoginUserResponse struct {
-	SessionID    string `json:"sessionId"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
+type LoginUserCookiesResponse struct {
+	AccessToken  TokenDetails `json:"accessToken"`
+	RefreshToken TokenDetails `json:"refreshToken"`
 }
 
 type RenewTokensResponse struct {
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
+// TokenDetails represents the data for access and refresh tokens.
+type TokenDetails struct {
+	Value   string    `json:"value"`
+	Expires time.Time `json:"expires"`
 }

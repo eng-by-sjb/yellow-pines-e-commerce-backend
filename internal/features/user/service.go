@@ -12,7 +12,7 @@ import (
 
 type Servicer interface {
 	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
-	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error)
+	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserCookiesResponse, error)
 	logoutUser(ctx context.Context, refreshToken string) error
 	renewTokens(ctx context.Context, payload *RenewTokensRequest) (*RenewTokensResponse, error)
 }
@@ -66,7 +66,7 @@ func (s *Service) registerUser(ctx context.Context, newUser *RegisterUserRequest
 	return nil
 }
 
-func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserResponse, error) {
+func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserCookiesResponse, error) {
 	u, err := s.store.findByEmail(ctx, payload.Email)
 	if err != nil {
 		return nil, err
@@ -76,7 +76,7 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 		return nil, servererrors.ErrInvalidCredentials
 	}
 
-	accessToken, _, err := s.TokenService.GenerateToken(
+	accessToken, accessClaims, err := s.TokenService.GenerateToken(
 		false,
 		u.UserID.String(),
 	)
@@ -93,10 +93,15 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 
 		switch {
 		case existingSession.ExpiresAt.After(time.Now()) && !existingSession.IsRevoked:
-			return &LoginUserResponse{
-				SessionID:    existingSession.SessionID.String(),
-				AccessToken:  accessToken,
-				RefreshToken: existingSession.RefreshToken,
+			return &LoginUserCookiesResponse{
+				AccessToken: TokenDetails{
+					Value:   accessToken,
+					Expires: accessClaims.ExpiresAt.Time,
+				},
+				RefreshToken: TokenDetails{
+					Value:   existingSession.RefreshToken,
+					Expires: existingSession.ExpiresAt,
+				},
 			}, nil
 
 		default:
@@ -132,10 +137,15 @@ func (s *Service) loginUser(ctx context.Context, payload *LoginUserRequest) (*Lo
 		return nil, err
 	}
 
-	return &LoginUserResponse{
-		SessionID:    refreshClaims.RegisteredClaims.ID,
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+	return &LoginUserCookiesResponse{
+		AccessToken: TokenDetails{
+			Value:   accessToken,
+			Expires: accessClaims.ExpiresAt.Time,
+		},
+		RefreshToken: TokenDetails{
+			Value:   refreshToken,
+			Expires: refreshClaims.ExpiresAt.Time,
+		},
 	}, nil
 }
 

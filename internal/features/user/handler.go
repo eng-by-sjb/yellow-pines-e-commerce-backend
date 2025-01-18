@@ -125,11 +125,28 @@ func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error
 		}
 	}
 
+	cookies := []handlerutils.Cookie{
+		{
+			Name:    "accessToken",
+			Value:   loginUserResponse.AccessToken.Value,
+			Expires: loginUserResponse.AccessToken.Expires,
+		},
+		{
+			Name:    "refreshToken",
+			Value:   loginUserResponse.RefreshToken.Value,
+			Expires: loginUserResponse.RefreshToken.Expires,
+		},
+	}
+	handlerutils.SetCookies(
+		w,
+		cookies,
+	)
+
 	return handlerutils.WriteSuccessJSON(
 		w,
 		http.StatusCreated,
-		"access and refresh tokens created",
-		loginUserResponse,
+		"access and refresh tokens attached to cookies",
+		nil,
 	)
 }
 

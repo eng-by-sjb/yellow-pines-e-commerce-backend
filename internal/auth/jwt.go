@@ -15,9 +15,10 @@ type TokenClaims struct {
 }
 
 type RefreshTokens struct {
-	AccessToken        string       `json:"accessToken"`
-	RefreshToken       string       `json:"refreshToken"`
-	RefreshTokenClaims *TokenClaims `json:"refreshTokenClaims"`
+	NewAccessToken        string       `json:"accessToken"`
+	NewRefreshToken       string       `json:"refreshToken"`
+	NewAccessTokenClaims  *TokenClaims `json:"accessTokenClaims"`
+	NewRefreshTokenClaims *TokenClaims `json:"refreshTokenClaims"`
 }
 
 type TokenServicer interface {
@@ -109,20 +110,21 @@ func (tm *TokenService) RefreshTokens(userID string) (*RefreshTokens, error) {
 	// 	return "", "", err
 	// }
 
-	newAccessToken, _, err := tm.GenerateToken(false, userID)
+	newAccessToken, newAccessTokenClaims, err := tm.GenerateToken(false, userID)
 	if err != nil {
 		return nil, err
 	}
 
-	newRefreshToken, claims, err := tm.GenerateToken(true, userID)
+	newRefreshToken, newRefreshTokenClaims, err := tm.GenerateToken(true, userID)
 	if err != nil {
 		return nil, err
 	}
 
 	return &RefreshTokens{
-		AccessToken:        newAccessToken,
-		RefreshToken:       newRefreshToken,
-		RefreshTokenClaims: claims,
+		NewAccessToken:        newAccessToken,
+		NewRefreshToken:       newRefreshToken,
+		NewAccessTokenClaims:  newAccessTokenClaims,
+		NewRefreshTokenClaims: newRefreshTokenClaims,
 	}, nil
 
 }
