@@ -15,14 +15,14 @@ import (
 type Server struct {
 	addr         string
 	db           *sql.DB
-	tokenManager *auth.TokenService
+	tokenService *auth.TokenService
 }
 
-func NewServer(addr string, db *sql.DB, tokenManager *auth.TokenService) *Server {
+func NewServer(addr string, db *sql.DB, tokenService *auth.TokenService) *Server {
 	return &Server{
 		addr:         addr,
 		db:           db,
-		tokenManager: tokenManager,
+		tokenService: tokenService,
 	}
 }
 
@@ -58,7 +58,7 @@ func (s *Server) v1Router() *chi.Mux {
 
 	// user feature
 	userStore := user.NewStore(s.db)
-	userService := user.NewService(userStore, s.tokenManager)
+	userService := user.NewService(userStore, s.tokenService)
 	userHandler := user.NewHandler(userService)
 	userHandler.RegisterRoutes(r)
 

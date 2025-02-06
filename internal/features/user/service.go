@@ -22,10 +22,10 @@ type Service struct {
 	TokenService auth.TokenServicer
 }
 
-func NewService(store Storer, tokenMaker auth.TokenServicer) *Service {
+func NewService(store Storer, tokenService auth.TokenServicer) *Service {
 	return &Service{
 		store:        store,
-		TokenService: tokenMaker,
+		TokenService: tokenService,
 	}
 }
 
