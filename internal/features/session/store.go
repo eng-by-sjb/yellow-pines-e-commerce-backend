@@ -37,7 +37,7 @@ func (s *store) create(ctx context.Context, session *Session) error {
 	)
 	if err != nil {
 		return fmt.Errorf(
-			"failed to insert new session in user store: %w",
+			"failed to insert new session in session store: %w",
 			err,
 		)
 	}
