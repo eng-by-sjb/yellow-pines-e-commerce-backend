@@ -12,17 +12,23 @@ import (
 	"github.com/go-chi/chi"
 )
 
-type Handler struct {
-	service Servicer
+type servicer interface {
+	registerUser(ctx context.Context, newUser *RegisterUserRequest) error
+	loginUser(ctx context.Context, payload *LoginUserRequest) (*LoginUserCookiesResponse, error)
+	logoutUser(ctx context.Context, refreshToken string) error
 }
 
-func NewHandler(service Servicer) *Handler {
-	return &Handler{
+type handler struct {
+	service servicer
+}
+
+func NewHandler(service servicer) *handler {
+	return &handler{
 		service: service,
 	}
 }
 
-func (h *Handler) RegisterRoutes(router *chi.Mux) {
+func (h *handler) RegisterRoutes(router *chi.Mux) {
 	router.Post(
 		"/register",
 		handlerutils.MakeHandler(h.registerUserHandler),
@@ -35,13 +41,9 @@ func (h *Handler) RegisterRoutes(router *chi.Mux) {
 		"/logout",
 		handlerutils.MakeHandler(h.logoutUserHandler),
 	)
-	router.Post(
-		"/tokens/renew",
-		handlerutils.MakeHandler(h.renewTokensHandler),
-	)
 }
 
-func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *handler) registerUserHandler(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(
 		r.Context(),
 		(30 * time.Second),
@@ -89,7 +91,7 @@ func (h *Handler) registerUserHandler(w http.ResponseWriter, r *http.Request) er
 	)
 }
 
-func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(
 		r.Context(),
 		(30 * time.Second),
@@ -150,7 +152,7 @@ func (h *Handler) loginUserHandler(w http.ResponseWriter, r *http.Request) error
 	)
 }
 
-func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) error {
+func (h *handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(
 		r.Context(),
 		(30 * time.Second),
@@ -199,83 +201,4 @@ func (h *Handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		"user logged out",
 		nil,
 	)
-}
-
-func (h *Handler) renewTokensHandler(w http.ResponseWriter, r *http.Request) error {
-	ctx, cancel := context.WithTimeout(
-		r.Context(),
-		(30 * time.Second),
-	)
-	defer cancel()
-
-	var err error
-	payload := new(RenewTokensRequest)
-
-	payload.ClientIP = handlerutils.GetClientIP(r)
-	payload.UserAgent = r.UserAgent()
-
-	refreshToken, err := r.Cookie("refreshToken")
-	if err != nil {
-		switch {
-		case errors.Is(err, http.ErrNoCookie):
-			return servererrors.New(
-				http.StatusForbidden,
-				servererrors.ErrNoRefreshTokenCookie.Error(),
-				nil,
-			)
-		default:
-			return err
-		}
-	}
-
-	payload.RefreshToken = refreshToken.Value
-
-	renewedTokens, err := h.service.renewTokens(
-		ctx,
-		payload,
-	)
-	if err != nil {
-		switch {
-		case errors.Is(err, servererrors.ErrInvalidRefreshToken):
-			return servererrors.New(
-				http.StatusUnauthorized,
-				servererrors.ErrInvalidRefreshToken.Error(),
-				nil,
-			)
-
-		case errors.Is(err, servererrors.ErrSessionNotFound):
-			return servererrors.New(
-				http.StatusUnauthorized,
-				servererrors.ErrSessionNotFound.Error(),
-				nil,
-			)
-		default:
-			return err
-		}
-	}
-
-	cookies := []handlerutils.Cookie{
-		{
-			Name:    "accessToken",
-			Value:   renewedTokens.AccessToken.Value,
-			Expires: renewedTokens.AccessToken.Expires,
-		},
-		{
-			Name:    "refreshToken",
-			Value:   renewedTokens.RefreshToken.Value,
-			Expires: renewedTokens.RefreshToken.Expires,
-		},
-	}
-	handlerutils.SetCookies(
-		w,
-		cookies,
-	)
-
-	return handlerutils.WriteSuccessJSON(
-		w,
-		http.StatusOK,
-		"tokens renewed and attached to cookies",
-		nil,
-	)
-
 }

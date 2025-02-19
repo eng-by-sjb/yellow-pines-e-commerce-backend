@@ -3,6 +3,7 @@ package user
 import "time"
 
 // Requests
+
 type RegisterUserRequest struct {
 	FirstName string `json:"firstName" validate:"required,min=2,max=15,noAllRepeatingChars"`
 	LastName  string `json:"lastName" validate:"required,min=2,max=15,noAllRepeatingChars"`
@@ -17,19 +18,17 @@ type LoginUserRequest struct {
 	ClientIP  string `json:"clientIP" validate:"required"`
 }
 
-type RenewTokensRequest struct {
-	RefreshToken string `json:"refreshToken" validate:"required"`
-	UserAgent    string `json:"userAgent" validate:"required"`
-	ClientIP     string `json:"clientIP" validate:"required"`
+func (lu *LoginUserRequest) GetUserAgent() string {
+	return lu.UserAgent
+}
+
+func (lu *LoginUserRequest) GetClientIP() string {
+	return lu.ClientIP
 }
 
 // Responses
-type LoginUserCookiesResponse struct {
-	AccessToken  TokenDetails `json:"accessToken"`
-	RefreshToken TokenDetails `json:"refreshToken"`
-}
 
-type RenewTokensCookiesResponse struct {
+type LoginUserCookiesResponse struct {
 	AccessToken  TokenDetails `json:"accessToken"`
 	RefreshToken TokenDetails `json:"refreshToken"`
 }

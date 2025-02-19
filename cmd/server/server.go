@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/session"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
 	"github.com/go-chi/chi"
 	chimiddleware "github.com/go-chi/chi/middleware"
@@ -52,13 +53,22 @@ func (s *Server) v1Router() *chi.Mux {
 
 	// health check
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("health check")
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	})
+	// session feature
+	sessionStore := session.NewStore(s.db)
+	sessionService := session.NewService(
+		sessionStore,
+		s.tokenService,
+	)
+	sessionHandler := session.NewHandler(sessionService)
+	sessionHandler.RegisterRoutes(r)
 
 	// user feature
 	userStore := user.NewStore(s.db)
-	userService := user.NewService(userStore, s.tokenService)
+	userService := user.NewService(userStore, sessionService)
 	userHandler := user.NewHandler(userService)
 	userHandler.RegisterRoutes(r)
 

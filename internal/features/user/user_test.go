@@ -80,7 +80,10 @@ var testCases = []testCase{
 
 func TestUserRoutes(t *testing.T) {
 	userStore := newMockUserStore()
-	userService := NewService(userStore, nil) // todo: no token service
+	userService := NewService(
+		userStore,
+		nil,
+	) // todo: add session service
 	userHandler := NewHandler(userService)
 
 	// create router
@@ -159,23 +162,4 @@ func (m *mockStore) findByEmail(ctx context.Context, email string) (*User, error
 
 func (m *mockStore) findByID(ctx context.Context, userID uuid.UUID) (*User, error) {
 	return nil, nil
-}
-
-func (m *mockStore) createSession(ctx context.Context, session *Session) error {
-	panic("unimplemented")
-}
-
-func (m *mockStore) findSessionByUserIDAndUserAgent(ctx context.Context, userID uuid.UUID, UserAgent string) (*Session, error) {
-	panic("unimplemented")
-}
-
-func (m *mockStore) deleteSessionByID(ctx context.Context, sessionID uuid.UUID) error {
-	panic("unimplemented")
-}
-func (m *mockStore) deleteAllSessionsByUserID(ctx context.Context, userID uuid.UUID) error {
-	panic("unimplemented")
-}
-
-func (m *mockStore) findSessionByID(ctx context.Context, sessionID uuid.UUID) (*Session, error) {
-	panic("unimplemented")
 }

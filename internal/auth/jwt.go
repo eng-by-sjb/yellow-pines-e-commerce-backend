@@ -10,7 +10,8 @@ import (
 )
 
 type TokenClaims struct {
-	UserID string `json:"userId"`
+	EntityID   string `json:"entityId,omitempty"`
+	EntityType string `json:"entityType,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -21,12 +22,12 @@ type RefreshTokens struct {
 	NewRefreshTokenClaims *TokenClaims `json:"refreshTokenClaims"`
 }
 
-type TokenServicer interface {
-	GenerateToken(isRefreshToken bool, userID string) (string, *TokenClaims, error)
-	ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
-	ValidateRefreshToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
-	RefreshTokens(userID string) (*RefreshTokens, error)
-}
+// type TokenServicer interface {
+// 	GenerateToken(isRefreshToken bool, entityID string, entityType string) (string, *TokenClaims, error)
+// 	ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
+// 	ValidateRefreshToken(tokenStr string) (isValid bool, claims *TokenClaims, err error)
+// 	RefreshTokens(entityID string, entityType string) (*RefreshTokens, error)
+// }
 
 type TokenService struct {
 	AccessTokenSecret        []byte
@@ -45,7 +46,7 @@ func NewTokenService(accessTokenSecret, refreshTokenSecret string,
 	}
 }
 
-func (tm *TokenService) GenerateToken(isRefreshToken bool, userID string) (string, *TokenClaims, error) {
+func (tm *TokenService) GenerateToken(isRefreshToken bool, entityID string, entityType string) (tokenStr string, claims *TokenClaims, err error) {
 	var (
 		tokenID string
 		secret  []byte
@@ -74,12 +75,13 @@ func (tm *TokenService) GenerateToken(isRefreshToken bool, userID string) (strin
 	// 	NotBefore: jwt.NewNumericDate(time.Now()),
 	// }
 
-	claims := TokenClaims{
-		UserID: userID,
+	claims = &TokenClaims{
+		EntityID:   entityID,
+		EntityType: entityType,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        tokenID,
 			Issuer:    "aa_backend", // todo: correct this
-			Subject:   "app",        // todo correct this to token type
+			Subject:   fmt.Sprintf("%s_%s", entityType, entityID),
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(expiry)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
@@ -88,12 +90,12 @@ func (tm *TokenService) GenerateToken(isRefreshToken bool, userID string) (strin
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 
-	tokenStr, err := token.SignedString(secret)
+	tokenStr, err = token.SignedString(secret)
 	if err != nil {
 		return "", nil, err
 	}
 
-	return tokenStr, &claims, nil
+	return tokenStr, claims, nil
 }
 
 func (tm *TokenService) ValidateAccessToken(tokenStr string) (isValid bool, claims *TokenClaims, err error) {
@@ -104,18 +106,18 @@ func (tm *TokenService) ValidateRefreshToken(tokenStr string) (isValid bool, cla
 	return tm.validateToken(tokenStr, tm.RefreshTokenSecret)
 }
 
-func (tm *TokenService) RefreshTokens(userID string) (*RefreshTokens, error) {
+func (tm *TokenService) RefreshTokens(entityID string, entityType string) (*RefreshTokens, error) {
 	// _, claims, err := tm.validateToken(refreshToken, tm.RefreshTokenSecret)
 	// if err != nil {
 	// 	return "", "", err
 	// }
 
-	newAccessToken, newAccessTokenClaims, err := tm.GenerateToken(false, userID)
+	newAccessToken, newAccessTokenClaims, err := tm.GenerateToken(false, entityID, entityType)
 	if err != nil {
 		return nil, err
 	}
 
-	newRefreshToken, newRefreshTokenClaims, err := tm.GenerateToken(true, userID)
+	newRefreshToken, newRefreshTokenClaims, err := tm.GenerateToken(true, entityID, entityType)
 	if err != nil {
 		return nil, err
 	}
