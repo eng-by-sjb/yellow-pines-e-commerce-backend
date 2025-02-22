@@ -46,7 +46,7 @@ func (s *service) loginAdmin(ctx context.Context, payload *LoginAdminRequest) (*
 		ctx,
 		&interfaces.LoginEntityRequest{
 			EntityID:   admin.AdminID,
-			EntityType: "user",
+			EntityType: "admin",
 			UserAgent:  payload.UserAgent,
 			ClientIP:   payload.ClientIP,
 		},
