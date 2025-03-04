@@ -18,6 +18,7 @@ type User struct {
 	CreatedAt              string    `json:"created_at"`
 	UpdatedAt              string    `json:"updated_at"`
 }
+
 func (u *User) comparePassword(passwordStr string) bool {
 	return auth.ComparePassword(u.HashedPassword, passwordStr)
 }

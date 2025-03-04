@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/auth"
+	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/admin"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/session"
 	"github.com/eng-by-sjb/yellow-pines-e-commerce-backend/internal/features/user"
 	"github.com/go-chi/chi"
@@ -71,6 +72,15 @@ func (s *Server) v1Router() *chi.Mux {
 	userService := user.NewService(userStore, sessionService)
 	userHandler := user.NewHandler(userService)
 	userHandler.RegisterRoutes(r)
+
+	//admin feature
+	adminStore := admin.NewStore(s.db)
+	adminService := admin.NewService(
+		adminStore,
+		sessionService,
+	)
+	adminHandler := admin.NewHandler(adminService)
+	adminHandler.RegisterRoutes(r)
 
 	return r
 }

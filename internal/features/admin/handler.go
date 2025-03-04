@@ -149,4 +149,3 @@ func (h *handler) logoutUserHandler(w http.ResponseWriter, r *http.Request) erro
 		nil,
 	)
 }
-

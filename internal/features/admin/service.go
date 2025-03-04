@@ -70,4 +70,3 @@ func (s *service) loginAdmin(ctx context.Context, payload *LoginAdminRequest) (*
 func (s *service) logoutAdmin(ctx context.Context, refreshToken string) error {
 	return s.sessionService.LogoutEntity(ctx, refreshToken)
 }
-
